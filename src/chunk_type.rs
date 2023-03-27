@@ -1,49 +1,47 @@
 use std::str::FromStr;
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ChunkType {
-    data: [char; 4]
+    data: [u8; 4],
 }
 
 impl ChunkType {
-    fn bytes(&self) -> [u8;4] {
-        self.data.map(|char| char.to_string()).map(|string| string.into_bytes()[0])
+    fn bytes(&self) -> [u8; 4] {
+        self.data
     }
     fn is_valid(&self) -> bool {
-        for char in self.data {
-            if !char.is_alphabetic() {
-                return false
+        let mut valid = self.data.is_ascii();
+
+        for byte in self.data {
+            if !byte.is_ascii_alphabetic() {
+                valid = false;
+                break;
             }
         }
-        true
+
+        valid = valid && self.is_reserved_bit_valid();
+
+        valid
     }
     fn is_critical(&self) -> bool {
-        self.data[0].is_uppercase()
+        self.data[0].is_ascii_uppercase()
     }
     fn is_public(&self) -> bool {
-        self.data[1].is_lowercase()
+        self.data[1].is_ascii_uppercase()
     }
     fn is_reserved_bit_valid(&self) -> bool {
-        self.data[2].is_uppercase()
+        self.data[2].is_ascii_uppercase()
     }
     fn is_safe_to_copy(&self) -> bool {
-        self.data[3].is_lowercase()
+        self.data[3].is_ascii_lowercase()
     }
 }
 
 impl TryFrom<[u8; 4]> for ChunkType {
     type Error = &'static str;
 
-    fn try_from(bytes: [u8;4]) -> Result<Self, Self::Error> {
-        let data = bytes.map(|byte| byte.to_string().chars().nth(0).unwrap_or('-'));
-
-        for char in data {
-            if !char.is_alphabetic() {
-                return Err("The Character is not alphabetic");
-            }
-        }
-
-        Ok(ChunkType { data })
+    fn try_from(bytes: [u8; 4]) -> Result<Self, Self::Error> {
+        Ok(ChunkType { data: bytes })
     }
 }
 
@@ -51,26 +49,26 @@ impl FromStr for ChunkType {
     type Err = &'static str;
 
     fn from_str(string: &str) -> Result<Self, Self::Err> {
-        let mut array = ['.'; 4];
-        let data = string.chars();
-        let mut index = 0;
+        let mut bytes: [u8; 4] = [0; 4];
+        let string_bytes = string.as_bytes();
 
-        for char in data {
-            if !char.is_alphabetic() {
-                return Err("Char at {index} is not an Alphabetical character")
-            };
-
-            array[index] = char;
-            index += 1;
+        for index in 0..4 {
+            if !string_bytes[index].is_ascii_alphabetic() {
+                return Err("Non alphabetic character encountered.")
+            }
+            bytes[index] = string_bytes[index];
         }
 
-        Ok(ChunkType { data: array })
+        Ok(ChunkType { data: bytes })
     }
 }
 
 impl std::fmt::Display for ChunkType {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{}{}{}{}", self.data[0], self.data[1],self.data[2],self.data[3])
+        match String::from_utf8(self.data.to_vec()) {
+            Ok(string) => write!(f, "{}", string),
+            Err(_) => Err(std::fmt::Error)
+        }
     }
 }
 
