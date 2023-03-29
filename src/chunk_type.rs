@@ -6,10 +6,10 @@ pub struct ChunkType {
 }
 
 impl ChunkType {
-    fn bytes(&self) -> [u8; 4] {
+    pub fn bytes(&self) -> [u8; 4] {
         self.data
     }
-    fn is_valid(&self) -> bool {
+    pub fn is_valid(&self) -> bool {
         let mut valid = self.data.is_ascii();
 
         for byte in self.data {
@@ -23,16 +23,16 @@ impl ChunkType {
 
         valid
     }
-    fn is_critical(&self) -> bool {
+    pub fn is_critical(&self) -> bool {
         self.data[0].is_ascii_uppercase()
     }
-    fn is_public(&self) -> bool {
+    pub fn is_public(&self) -> bool {
         self.data[1].is_ascii_uppercase()
     }
-    fn is_reserved_bit_valid(&self) -> bool {
+    pub fn is_reserved_bit_valid(&self) -> bool {
         self.data[2].is_ascii_uppercase()
     }
-    fn is_safe_to_copy(&self) -> bool {
+    pub fn is_safe_to_copy(&self) -> bool {
         self.data[3].is_ascii_lowercase()
     }
 }
