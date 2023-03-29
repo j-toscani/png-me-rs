@@ -4,7 +4,7 @@ use super::*;
 use crate::chunk_type::ChunkType;
 use crc::{Crc, CRC_32_ISO_HDLC};
 
-struct Chunk {
+pub struct Chunk {
     data: Vec<u8>,
     length: u32,
     chunk_type: ChunkType,
@@ -12,7 +12,7 @@ struct Chunk {
 }
 
 impl Chunk {
-    fn new(chunk_type: ChunkType, data: Vec<u8>) -> Chunk {
+    pub fn new(chunk_type: ChunkType, data: Vec<u8>) -> Chunk {
         let length = data.len() as u32;
 
         let bytes = &chunk_type
@@ -40,18 +40,18 @@ impl Chunk {
         self.data.as_slice()
     }
 
-    fn data_as_string(&self) -> Result<String> {
+    pub fn data_as_string(&self) -> Result<String> {
         match String::from_utf8(self.data.clone()) {
             Ok(string) => Ok(string),
             Err(_) => Err("Could not convert Data to String".into()),
         }
     }
 
-    fn chunk_type(&self) -> &ChunkType {
+    pub fn chunk_type(&self) -> &ChunkType {
         &self.chunk_type
     }
 
-    fn as_bytes(&self) -> Vec<u8> {
+    pub fn as_bytes(&self) -> Vec<u8> {
         self.length
             .to_be_bytes()
             .iter()
