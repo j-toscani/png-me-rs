@@ -1,7 +1,6 @@
-use crate::chunk::{Chunk, self};
-use crate::chunk_type::ChunkType;
+use crate::chunk::Chunk;
 use crate::{Result};
-use std::str::FromStr;
+use std::io::{BufReader, Read};
 
 struct Png {
     chunks: Vec<Chunk>,
@@ -24,22 +23,11 @@ impl Png {
     pub const STANDARD_HEADER: [u8; 8] = [137, 80, 78, 71, 13, 10, 26, 10];
 
     fn from_chunks(chunks: Vec<Chunk>) -> Png {
-        let start: Chunk = Chunk::new(ChunkType::from_str("IHDR").unwrap(), [].to_vec());
-        let end: Chunk = Chunk::new(ChunkType::from_str("IEND").unwrap(), [].to_vec());
-        let mut new_chunks = vec![start];
-        
-        for chunk in chunks.into_iter() {
-            new_chunks.push(chunk)
-        }
-
-        new_chunks.push(end);
-
-        Png { chunks : new_chunks }
+        Png { chunks }
     }
 
     fn append_chunk(&mut self, chunk: Chunk) {
-        let second_to_last = self.chunks.len() - 1;
-        self.chunks.insert(second_to_last, chunk);
+        self.chunks.push(chunk);
     }
 
     fn remove_chunk(&mut self, chunk_type: &str) -> Result<Chunk> {
@@ -76,7 +64,44 @@ impl TryFrom<&[u8]> for Png {
     type Error = Box<dyn std::error::Error>;
 
     fn try_from(bytes: &[u8]) -> std::result::Result<Self, Self::Error> {
-        Ok(Png::from_chunks(vec![Chunk::new(ChunkType::from_str("IHDR").unwrap(), [].to_vec())]))
+        for (index, byte) in Png::STANDARD_HEADER.iter().enumerate() {
+            if byte != &bytes[index] {
+                return Err(Box::new(PngHandlingError { details: "Header incorrect" }));
+            }
+        }
+
+        let header_length = 8;
+        let chunk_length = 4;
+        let crc_length = 4;
+        let length_length = 4;
+
+        let mut pieces: Vec<(usize, usize)> = vec![];
+        let mut start = header_length;
+        let mut end = start + chunk_length + length_length + crc_length;
+        let mut buffer :[u8; 4]= [0;4]; 
+
+        while end < bytes.len() {
+            let mut reader = BufReader::new(&bytes[start..start+4]);
+            reader.read_exact(&mut buffer)?;
+
+            let data_length = u32::from_be_bytes(buffer) as usize;
+
+            end = start + data_length + chunk_length + crc_length + length_length;
+
+            pieces.push((start, end));
+            start = end;
+        }
+
+        let mut chunks : Vec<Chunk> = vec![];
+
+        for (start, end) in pieces {
+            let slice = &bytes[start..end];
+
+            let chunk = Chunk::try_from(slice)?;
+            chunks.push(chunk);
+        }
+
+        Ok(Png { chunks })
     }
 }
 
